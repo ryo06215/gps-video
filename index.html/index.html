@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS連動 動画プレイヤー</title>
+    <style>
+        body { text-align: center; padding: 20px; font-family: sans-serif; }
+        video { max-width: 100%; border-radius: 10px; display: none; }
+        button { padding: 15px 30px; font-size: 18px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h2>目的地に近づくと動画が再生されます</h2>
+    <button id="startBtn">位置情報の取得を開始</button>
+    <p id="status">ボタンを押して待機してください...</p>
+    
+    <!-- 動画ファイル名を指定（同階層にあるvideo.mp4） -->
+    <video id="myVideo" src="video.mp4" controls playsinline></video>
+
+    <script>
+        // 目的地の座標と発動範囲（メートル）
+        const TARGETS = [
+            { name: "靱公園 バラ園", lat: 34.6865, lng: 135.4940 },
+            { name: "創造社デザイン専門学校", lat: 34.6935, lng: 135.4905 }
+        ];
+        const TRIGGER_DISTANCE = 50; // 50m以内に近づいたら再生
+
+        const startBtn = document.getElementById('startBtn');
+        const statusText = document.getElementById('status');
+        const video = document.getElementById('myVideo');
+        let watchId = null;
+
+        startBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                statusText.innerText = "お使いのブラウザはGPSに対応していません。";
+                return;
+            }
+            statusText.innerText = "位置情報を監視中...";
+            startBtn.style.display = "none";
+            
+            // 音声付き動画を後でJSから再生できるようにするための空再生（ブラウザ対策）
+            video.play().then(() => { video.pause(); }).catch(e => console.log(e));
+
+            // GPSの監視を開始
+            watchId = navigator.geolocation.watchPosition(success, error, {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            });
+        });
+
+        function success(position) {
+            const currentLat = position.coords.latitude;
+            const currentLng = position.coords.longitude;
+
+            let inRange = false;
+            let targetName = "";
+
+            for (let target of TARGETS) {
+                const distance = getDistance(currentLat, currentLng, target.lat, target.lng);
+                if (distance <= TRIGGER_DISTANCE) {
+                    inRange = true;
+                    targetName = target.name;
+                    break;
+                }
+            }
+
+            if (inRange) {
+                statusText.innerText = `${targetName}に到着しました！動画を再生します。`;
+                if (video.style.display === "none") {
+                    video.style.display = "block";
+                    video.play();
+                }
+            } else {
+                statusText.innerText = "目的地に向かっています... (現在地更新中)";
+                video.style.display = "none";
+                video.pause();
+                video.currentTime = 0; // 離れたら最初に戻す
+            }
+        }
+
+        function error() {
+            statusText.innerText = "位置情報の取得に失敗しました。";
+        }
+
+        // 2点間の距離を計算する関数（ハバシン公式）
+        function getDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371e3; // 地球の半径 (メートル)
+            const radLat1 = lat1 * Math.PI / 180;
+            const radLat2 = lat2 * Math.PI / 180;
+            const deltaLat = (lat2 - lat1) * Math.PI / 180;
+            const deltaLng = (lng2 - lng1) * Math.PI / 180;
+
+            const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+                      Math.cos(radLat1) * Math.cos(radLat2) *
+                      Math.sin(deltaLng/2) * Math.sin(deltaLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+    </script>
+</body>
+</html>
