@@ -50,11 +50,9 @@
   </div>
 
   <script>
-    // GitHubにアップロードされた実際のファイル名に完全一致させています
     const SEARCHING_VIDEO = "loading.mp4"; 
     const ARRIVED_VIDEO = "motto3.MP4";
 
-    // 目的地の座標（靱公園 バラ園 / 創造社デザイン専門学校）
     const TARGETS = [
       { name: "靱公園 バラ園", lat: 34.684556, lng: 135.493099, radius: 100 },
       { name: "創造社デザイン専門学校", lat: 34.688122, lng: 135.493211, radius: 80 }
@@ -88,14 +86,14 @@
       startBtn.style.display = "none";
       videoContainer.style.display = "block";
 
-      // 探索中は探している最中の動画をループ再生
+      // 探索用動画をループ再生
       video.src = SEARCHING_VIDEO;
       video.loop = true;
-      video.play();
+      video.play().catch(e => console.log(e));
 
-      status.innerText = "目的地を探しています…（目的地へ向かって移動してください）";
+      status.innerText = "目的地を探しています…（位置情報を読み込み中）";
 
-      // 位置情報のリアルタイム追跡を開始
+      // リアルタイムで位置情報取得（タイムアウト制限を解除）
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           if (isArrived) return;
@@ -112,12 +110,10 @@
             }
           }
 
-          // 到着時の処理
           if (matchedSpot) {
             isArrived = true;
             status.innerText = `「${matchedSpot.name}」に到着しました！`;
             
-            // ループ解除＆到着動画に切替
             video.pause();
             video.src = ARRIVED_VIDEO;
             video.loop = false;
@@ -127,14 +123,22 @@
             if (watchId !== null) {
               navigator.geolocation.clearWatch(watchId);
             }
+          } else {
+            status.innerText = "目的地を探しています…（まだ現地付近に到着していません）";
           }
         },
         (error) => {
-          status.innerText = "位置情報の取得に失敗しました。ブラウザの位置情報許可をご確認ください。";
+          // エラーが出ても動画は止めず、理由をわかりやすく表示
+          if (error.code === 1) {
+            status.innerText = "位置情報の利用が拒否されています。ブラウザ/端末の設定で許可してください。";
+          } else {
+            status.innerText = "位置情報を検索中…（GPSの取得を待っています）";
+          }
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, maximumAge: 0 }
       );
     }
   </script>
 </body>
+</html>
 </html>
