@@ -18,7 +18,7 @@
       margin-bottom: 20px;
       line-height: 1.5;
     }
-    #video-container {
+    .video-box {
       margin-top: 10px;
     }
     video {
@@ -37,6 +37,8 @@
       cursor: pointer;
       font-weight: bold;
       margin-top: 15px;
+      text-decoration: none;
+      display: inline-block;
     }
   </style>
 </head>
@@ -46,16 +48,17 @@
   <p id="status">ボタンを押して探索を開始してください。</p>
   <button id="startBtn" class="btn" onclick="startTracking()">探索をはじめる</button>
 
-  <div id="video-container" style="display: none;">
-    <video id="myVideo" controls playsinline webkit-playsinline></video>
-    <br>
-    <button id="playBtn" class="btn" style="display: none;" onclick="playArrivedVideo()">到着動画を再生する</button>
+  <!-- 探索中動画（最初から配置） -->
+  <div id="searchBox" class="video-box" style="display: none;">
+    <video id="searchVideo" src="loading.mp4" controls playsinline webkit-playsinline loop muted preload="auto"></video>
+  </div>
+
+  <!-- 到着時動画（最初から配置しておき、到着したら表示） -->
+  <div id="arrivedBox" class="video-box" style="display: none;">
+    <video id="arrivedVideo" src="motto3.mp4" controls playsinline webkit-playsinline preload="auto"></video>
   </div>
 
   <script>
-    const SEARCHING_VIDEO = "loading.mp4"; 
-    const ARRIVED_VIDEO = "motto3.mp4";
-
     const TARGETS = [
       { name: "靱公園 バラ園", lat: 34.684556, lng: 135.493099, radius: 100 },
       { name: "創造社デザイン専門学校", lat: 34.688122, lng: 135.493211, radius: 80 }
@@ -78,8 +81,9 @@
     function startTracking() {
       const status = document.getElementById("status");
       const startBtn = document.getElementById("startBtn");
-      const videoContainer = document.getElementById("video-container");
-      const video = document.getElementById("myVideo");
+      const searchBox = document.getElementById("searchBox");
+      const searchVideo = document.getElementById("searchVideo");
+      const arrivedVideo = document.getElementById("arrivedVideo");
 
       if (!navigator.geolocation) {
         status.innerText = "お使いのブラウザは位置情報に対応していません。";
@@ -87,13 +91,11 @@
       }
 
       startBtn.style.display = "none";
-      videoContainer.style.display = "block";
+      searchBox.style.display = "block";
 
-      // 探索中は消音（muted）で自動再生を開始
-      video.muted = true;
-      video.loop = true;
-      video.src = SEARCHING_VIDEO;
-      video.play().catch(e => console.log(e));
+      // 「探索をはじめる」をタップしたこの瞬間に、両方の動画をブラウザに準備させる
+      searchVideo.play().catch(e => console.log(e));
+      arrivedVideo.load();
 
       status.innerText = "目的地を探しています…（目的地へ向かって移動してください）";
 
@@ -115,11 +117,20 @@
 
           if (matchedSpot) {
             isArrived = true;
-            status.innerText = `「${matchedSpot.name}」に到着しました！下のボタンを押してください。`;
+            status.innerText = `「${matchedSpot.name}」に到着しました！再生ボタンを押してください。`;
             
-            // 動画を一時停止して再生ボタンを表示
-            video.pause();
-            document.getElementById("playBtn").style.display = "inline-block";
+            // 探索用動画を停止・非表示
+            searchVideo.pause();
+            searchBox.style.display = "none";
+
+            // 到着用動画を表示
+            const arrivedBox = document.getElementById("arrivedBox");
+            arrivedBox.style.display = "block";
+
+            // 音声付き自動再生を試み、ブロックされた場合はユーザーのタップ再生に委ねる
+            arrivedVideo.play().catch(e => {
+              console.log("手動再生が必要です");
+            });
 
             if (watchId !== null) {
               navigator.geolocation.clearWatch(watchId);
@@ -132,20 +143,6 @@
         { enableHighAccuracy: true, maximumAge: 0 }
       );
     }
-
-    // ユーザーが明示的にボタンをタップしたタイミングで動画をロード＆音声付き再生
-    function playArrivedVideo() {
-      const video = document.getElementById("myVideo");
-      const playBtn = document.getElementById("playBtn");
-      
-      playBtn.style.display = "none";
-      video.muted = false;
-      video.loop = false;
-      video.src = ARRIVED_VIDEO;
-      video.load();
-      video.play();
-    }
   </script>
 </body>
-</html>
 </html>
