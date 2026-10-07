@@ -36,6 +36,7 @@
       border-radius: 25px;
       cursor: pointer;
       font-weight: bold;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -46,7 +47,9 @@
   <button id="startBtn" class="btn" onclick="startTracking()">探索をはじめる</button>
 
   <div id="video-container" style="display: none;">
-    <video id="myVideo" controls playsinline></video>
+    <video id="myVideo" controls playsinline webkit-playsinline></video>
+    <br>
+    <button id="playBtn" class="btn" style="display: none;" onclick="playArrivedVideo()">動画を再生する</button>
   </div>
 
   <script>
@@ -86,14 +89,13 @@
       startBtn.style.display = "none";
       videoContainer.style.display = "block";
 
-      // 探索用動画をループ再生
+      // 探索中はループ再生
       video.src = SEARCHING_VIDEO;
       video.loop = true;
       video.play().catch(e => console.log(e));
 
-      status.innerText = "目的地を探しています…（位置情報を読み込み中）";
+      status.innerText = "目的地を探しています…（目的地へ向かって移動してください）";
 
-      // リアルタイムで位置情報取得（タイムアウト制限を解除）
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           if (isArrived) return;
@@ -114,31 +116,41 @@
             isArrived = true;
             status.innerText = `「${matchedSpot.name}」に到着しました！`;
             
+            // 到着動画へ切替
             video.pause();
             video.src = ARRIVED_VIDEO;
             video.loop = false;
             video.load();
-            video.play();
+
+            // iPhone対策：自動再生を試み、ブロックされたら手動再生ボタンを出す
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+              playPromise.then(() => {
+                // 自動再生成功
+              }).catch(error => {
+                // 自動再生がブロックされた場合は再生ボタンを表示
+                document.getElementById("playBtn").style.display = "inline-block";
+              });
+            }
 
             if (watchId !== null) {
               navigator.geolocation.clearWatch(watchId);
             }
-          } else {
-            status.innerText = "目的地を探しています…（まだ現地付近に到着していません）";
           }
         },
         (error) => {
-          // エラーが出ても動画は止めず、理由をわかりやすく表示
-          if (error.code === 1) {
-            status.innerText = "位置情報の利用が拒否されています。ブラウザ/端末の設定で許可してください。";
-          } else {
-            status.innerText = "位置情報を検索中…（GPSの取得を待っています）";
-          }
+          status.innerText = "位置情報の取得に失敗しました。";
         },
         { enableHighAccuracy: true, maximumAge: 0 }
       );
     }
+
+    function playArrivedVideo() {
+      const video = document.getElementById("myVideo");
+      const playBtn = document.getElementById("playBtn");
+      video.play();
+      playBtn.style.display = "none";
+    }
   </script>
 </body>
-</html>
 </html>
