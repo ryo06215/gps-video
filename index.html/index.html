@@ -21,10 +21,14 @@
     .video-box {
       margin-top: 10px;
     }
-    video {
+    /* 縦型動画（Shorts）にも適した動画プレイヤー表示枠 */
+    iframe {
       width: 100%;
-      max-width: 400px;
+      max-width: 360px;
+      height: 640px;
+      max-height: 70vh;
       border-radius: 12px;
+      border: none;
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
     .btn {
@@ -37,8 +41,6 @@
       cursor: pointer;
       font-weight: bold;
       margin-top: 15px;
-      text-decoration: none;
-      display: inline-block;
     }
   </style>
 </head>
@@ -48,17 +50,18 @@
   <p id="status">ボタンを押して探索を開始してください。</p>
   <button id="startBtn" class="btn" onclick="startTracking()">探索をはじめる</button>
 
-  <!-- 探索中動画（最初から配置） -->
+  <!-- 探索中動画（YouTube埋め込み） -->
   <div id="searchBox" class="video-box" style="display: none;">
-    <video id="searchVideo" src="loading.mp4" controls playsinline webkit-playsinline loop muted preload="auto"></video>
+    <iframe id="searchIframe" src="https://www.youtube.com/embed/hYDcZNlnIqg?autoplay=1&mute=1&loop=1&playlist=hYDcZNlnIqg&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
   </div>
 
-  <!-- 到着時動画（最初から配置しておき、到着したら表示） -->
+  <!-- 到着時メイン動画（YouTube埋め込み） -->
   <div id="arrivedBox" class="video-box" style="display: none;">
-    <video id="arrivedVideo" src="motto3.mp4" controls playsinline webkit-playsinline preload="auto"></video>
+    <iframe id="arrivedIframe" src="https://www.youtube.com/embed/c-ZiSgN467s?autoplay=1&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
   </div>
 
   <script>
+    // 目的地の座標設定
     const TARGETS = [
       { name: "靱公園 バラ園", lat: 34.684556, lng: 135.493099, radius: 100 },
       { name: "創造社デザイン専門学校", lat: 34.688122, lng: 135.493211, radius: 80 }
@@ -67,6 +70,7 @@
     let watchId = null;
     let isArrived = false;
 
+    // 2点間の距離(m)計算関数
     function getDistance(lat1, lng1, lat2, lng2) {
       const R = 6371000;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -82,8 +86,6 @@
       const status = document.getElementById("status");
       const startBtn = document.getElementById("startBtn");
       const searchBox = document.getElementById("searchBox");
-      const searchVideo = document.getElementById("searchVideo");
-      const arrivedVideo = document.getElementById("arrivedVideo");
 
       if (!navigator.geolocation) {
         status.innerText = "お使いのブラウザは位置情報に対応していません。";
@@ -93,12 +95,9 @@
       startBtn.style.display = "none";
       searchBox.style.display = "block";
 
-      // 「探索をはじめる」をタップしたこの瞬間に、両方の動画をブラウザに準備させる
-      searchVideo.play().catch(e => console.log(e));
-      arrivedVideo.load();
-
       status.innerText = "目的地を探しています…（目的地へ向かって移動してください）";
 
+      // リアルタイム位置情報の監視を開始
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           if (isArrived) return;
@@ -115,30 +114,23 @@
             }
           }
 
+          // 目的地に到着した時の処理
           if (matchedSpot) {
             isArrived = true;
-            status.innerText = `「${matchedSpot.name}」に到着しました！再生ボタンを押してください。`;
+            status.innerText = `「${matchedSpot.name}」に到着しました！`;
             
-            // 探索用動画を停止・非表示
-            searchVideo.pause();
+            // 探索用動画を隠し、メイン動画を表示
             searchBox.style.display = "none";
+            document.getElementById("arrivedBox").style.display = "block";
 
-            // 到着用動画を表示
-            const arrivedBox = document.getElementById("arrivedBox");
-            arrivedBox.style.display = "block";
-
-            // 音声付き自動再生を試み、ブロックされた場合はユーザーのタップ再生に委ねる
-            arrivedVideo.play().catch(e => {
-              console.log("手動再生が必要です");
-            });
-
+            // GPS追跡を停止
             if (watchId !== null) {
               navigator.geolocation.clearWatch(watchId);
             }
           }
         },
         (error) => {
-          status.innerText = "位置情報の取得に失敗しました。";
+          status.innerText = "位置情報の取得に失敗しました。設定で位置情報を許可してください。";
         },
         { enableHighAccuracy: true, maximumAge: 0 }
       );
