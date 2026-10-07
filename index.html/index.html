@@ -46,19 +46,20 @@
   <p id="status">ボタンを押して探索を開始してください。</p>
   <button id="startBtn" class="btn" onclick="startTracking()">探索をはじめる</button>
 
-  <!-- 探索中動画 -->
+  <!-- 探索中動画プレイヤー -->
   <div id="search-container" class="video-box" style="display: none;">
     <video id="searchVideo" src="loading.mp4" controls playsinline webkit-playsinline loop muted></video>
   </div>
 
-  <!-- 到着時動画 -->
+  <!-- 到着時動画プレイヤー -->
   <div id="arrived-container" class="video-box" style="display: none;">
-    <video id="arrivedVideo" src="motto3.MP4" controls playsinline webkit-playsinline></video>
+    <video id="arrivedVideo" src="motto3.mp4" controls playsinline webkit-playsinline></video>
     <br>
     <button id="playBtn" class="btn" style="display: none;" onclick="playArrivedVideo()">タップして動画を再生</button>
   </div>
 
   <script>
+    // 目的地の座標設定
     const TARGETS = [
       { name: "靱公園 バラ園", lat: 34.684556, lng: 135.493099, radius: 100 },
       { name: "創造社デザイン専門学校", lat: 34.688122, lng: 135.493211, radius: 80 }
@@ -67,6 +68,7 @@
     let watchId = null;
     let isArrived = false;
 
+    // 2点間の距離(m)計算関数
     function getDistance(lat1, lng1, lat2, lng2) {
       const R = 6371000;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -92,11 +94,12 @@
       startBtn.style.display = "none";
       searchContainer.style.display = "block";
 
-      // 探索用動画を再生
+      // 探索用動画（loading.mp4）をループ再生
       searchVideo.play().catch(e => console.log(e));
 
       status.innerText = "目的地を探しています…（目的地へ向かって移動してください）";
 
+      // 位置情報のリアルタイム追跡を開始
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           if (isArrived) return;
@@ -113,15 +116,16 @@
             }
           }
 
+          // 目的地に到着した時の処理
           if (matchedSpot) {
             isArrived = true;
             status.innerText = `「${matchedSpot.name}」に到着しました！`;
             
-            // 探索動画を非表示にして停止
+            // 探索動画を隠して停止
             searchVideo.pause();
             searchContainer.style.display = "none";
 
-            // 到着動画を表示して再生準備
+            // 到着時動画（motto3.mp4）を表示して再生
             const arrivedContainer = document.getElementById("arrived-container");
             const arrivedVideo = document.getElementById("arrivedVideo");
             arrivedContainer.style.display = "block";
@@ -131,18 +135,19 @@
 
             if (playPromise !== undefined) {
               playPromise.catch(error => {
-                // 自動再生が拒否された場合は手動ボタンを表示
+                // 自動再生がブロックされた場合は再生ボタンを表示
                 document.getElementById("playBtn").style.display = "inline-block";
               });
             }
 
+            // GPS追跡を停止
             if (watchId !== null) {
               navigator.geolocation.clearWatch(watchId);
             }
           }
         },
         (error) => {
-          status.innerText = "位置情報の取得に失敗しました。";
+          status.innerText = "位置情報の取得に失敗しました。設定で位置情報を許可してください。";
         },
         { enableHighAccuracy: true, maximumAge: 0 }
       );
